@@ -62,12 +62,7 @@ const Index = () => {
     <>
       <GlobalStyle />
       <Flex centered fullPageHeight>
-        <div
-          onClick={toggle}
-          onMouseEnter={play}
-          onMouseLeave={pause}
-          ref={animationRef}
-        />
+        <div onClick={toggle} ref={animationRef} />
       </Flex>
       <audio loop ref={audioRef} src="/static/audio/laughter.mp3" />
     </>
