@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import styled, { css, createGlobalStyle } from "styled-components";
+import throttle from "lodash.throttle";
 import bodymovin from "lottie-web";
-import useMousePosition from "../components/hooks/use-mouseposition";
 import animationData from "../lottie/bread-laughing.json";
 
 const GlobalStyle = createGlobalStyle`
+  @import url('https://fonts.googleapis.com/css?family=Roboto:400,900&display=swap');
   body {
+    font-family: 'Roboto', sans-serif;
     background: #e45ef5;
   }
   body,html {
@@ -42,6 +44,17 @@ const BreadAnimationContainer = styled.div`
   }
 `;
 
+const TPMContainer = styled.div`
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  padding: 12px;
+  color: #f0c9f5;
+  border: 1px solid #f0c9f5;
+  border-radius: 4px;
+  z-index: 1;
+`;
+
 const Index = () => {
   const animationRef = useRef();
   const audioRef = useRef();
@@ -52,7 +65,18 @@ const Index = () => {
   const [YDiff, setYDiff] = useState(0);
   const [XTouchOrigin, setXTouchOrigin] = useState(0);
   const [XDiff, setXDiff] = useState(0);
-  const [x, y, bind] = useMousePosition();
+  const [x, setX] = useState(0);
+  const [y, setY] = useState(0);
+  const [tickles, setTickles] = useState(0);
+  const tickleCount = useRef(0);
+  const throttledDiff = useRef(
+    throttle((xDiff, yDiff) => {
+      console.log(tickleCount.current);
+      setTickles(tickleCount.current);
+      tickleCount.current = 0;
+      window.navigator.vibrate(5);
+    }, 1000)
+  );
 
   useEffect(() => {
     setAnimation(
@@ -75,17 +99,19 @@ const Index = () => {
 
   useEffect(() => {
     setYDiff(y - YTouchOrigin);
-  }, [y, YTouchOrigin]);
+  }, [y]);
 
   useEffect(() => {
     setXDiff(x - XTouchOrigin);
-  }, [x, XTouchOrigin]);
+  }, [x]);
 
   useEffect(() => {
     if (!svgRef.current) {
       return;
     }
     svgRef.current.style.transform = `translateX(${XDiff}px) translateY(${YDiff}px) translateZ(0)`;
+    tickleCount.current++;
+    throttledDiff.current(XDiff, YDiff);
   }, [YDiff, XDiff]);
 
   const play = () => {
@@ -106,26 +132,38 @@ const Index = () => {
   };
 
   const onTouchStart = ({ touches }) => {
-    play();
     setYTouchOrigin(touches[0].clientY);
     setXTouchOrigin(touches[0].clientX);
+    play();
   };
 
-  const onTouchEnd = ({ touches }) => {
+  const onTouchMove = ({ changedTouches }) => {
+    const { clientX, clientY } = changedTouches[0];
+    setX(clientX);
+    setY(clientY);
+  };
+
+  const onTouchEnd = () => {
+    setX(0);
+    setY(0);
+    setYTouchOrigin(0);
+    setXTouchOrigin(0);
+    setTickles(0);
     pause();
   };
 
   return (
     <>
       <GlobalStyle />
+      <TPMContainer>tickles per minute: {tickles}</TPMContainer>
       <Flex centered fullPageHeight>
         <BreadAnimationContainer
           YDiff={YDiff}
           XDiff={XDiff}
           ref={animationRef}
           onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
-          {...bind}
         />
       </Flex>
       <audio loop ref={audioRef} src="/static/audio/laughter.mp3" />
